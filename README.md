@@ -7,8 +7,8 @@ Starter files for installing virl through vagrant.
 0. Install vagrant and your appropriate key
 1. Clone this repo
 2. mv Vagrantfile.internal to Vagrantfile if your internal
-2. mv Vagrantfile.external to Vagrantfile if your internal
-3. if external send email to request your salt keys.
+2. mv Vagrantfile.external to Vagrantfile if your external
+3. if external send email to virl-install to request your salt keys.
 4. copy keys to this directory.
 5. alter Vagrantfile to reflect your key names.
 6. in the Examples directory there are a few settings.ini to
