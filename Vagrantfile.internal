@@ -120,7 +120,7 @@ config.vm.provision :shell, :inline => <<END
 cp -f /vagrant/settings.ini /home/virl/settings.ini
 
 # Bring ubuntu up to date
-apt-get -y update
+apt-get -y update -qq
 apt-get -y upgrade
 
 # Setting openstack env for later
