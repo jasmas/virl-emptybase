@@ -109,7 +109,7 @@ config.vm.provider "vmware_fusion" do |vf|
 end
 
 config.vm.provider "vmware_workstation" do |vw|
- v.gui = true
+ vw.gui = true
 end
 
 
