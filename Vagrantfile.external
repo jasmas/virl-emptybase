@@ -1,0 +1,162 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# Vagrantfile API/syntax version. Don't touch unless you know what you're doing!
+#VAGRANTFILE_API_VERSION = "2"
+
+Vagrant.configure("2") do |config|
+  # All Vagrant configuration is done here. The most common configuration
+  # options are documented and commented below. For a complete reference,
+  # please see the online documentation at vagrantup.com.
+
+
+#Remember to set the env variable to what you are using
+#export VAGRANT_DEFAULT_PROVIDER=vmware_fusion
+#export VAGRANT_DEFAULT_PROVIDER=vmware_workstation
+
+
+  # Every Vagrant virtual environment requires a box to build off of.
+  config.vm.box = "virl/emptybase"
+
+  # The url from where the 'config.vm.box' box will be fetched if it
+  # doesn't already exist on the user's system.
+#  config.vm.box_url = ""
+
+  # Create a forwarded port mapping which allows access to a specific port
+  # within the machine from a port on the host machine. In the example below,
+  # accessing "localhost:8080" will access port 80 on the guest machine.
+
+# The below defaults exist so you can have the vmm native client on your machine and
+#  simply have it always pointed to localhost 
+
+
+config.vm.network "forwarded_port", guest: 8080, host: 8080
+config.vm.network "forwarded_port", guest: 8081, host: 8081
+config.vm.network "forwarded_port", guest: 8000, host: 18000
+
+  # Create a private network, which allows host-only access to the machine
+  # using a specific IP.
+  # config.vm.network "private_network", ip: "192.168.33.10"
+
+## Uncomment the below for fusion
+config.vm.network "private_network", ip: "0.0.0.0"
+config.vm.network "private_network", ip: "0.0.0.0"
+
+
+  # If true, then any SSH connections made will enable agent forwarding.
+  # These are both baked into the box so just leave them set
+config.ssh.forward_agent = true
+# # Default vagrant username is vagrant.  We need it to be virl so
+config.ssh.username = 'virl'
+
+# You automatically get a mount from the directory with your vagrant file onto
+# /vagrant of the ubuntu node so I dont call it out here.
+
+# I STRONGLY suggest you make your own version of images mount so you only need to
+# download them once
+#config.vm.synced_folder "/Volumes/Media2/packer/images", "/home/virl/images"
+
+# So you only have to download the vmm binaries once
+#config.vm.synced_folder "/Volumes/Media2/packer/download", "/var/www/download"
+
+# Unless your doing dev work you probably dont need this
+#config.vm.synced_folder "/Volumes/Media2/packer/virl.standalone", "/home/virl/virl.standalone"
+
+# If you run the vmmaestro linux desktop you can keep your own copy of your 
+# vmm "workspace" locally 
+#config.vm.synced_folder "/Volumes/Home/Users/ejk/vmmaestro", "/home/virl/vmmaestro"
+
+
+## The two provider sections below are included automatically in the box...only uncomment
+## if/when you need to make changes
+# config.vm.provider "vmware_fusion" do |v|
+#   v.vmx["ethernet0.virtualDev"] = "e1000"
+#   v.vmx["ethernet1.virtualDev"] = "e1000"
+#   v.vmx["ethernet1.connectionType"] = "custom"
+#   v.vmx["ethernet1.vnet"] = "vmnet2"
+#   v.vmx["ethernet1.addressType"] = "generated"
+#   v.vmx["ethernet2.virtualDev"] = "e1000"
+#   v.vmx["ethernet2.connectionType"] = "custom"
+#   v.vmx["ethernet2.addressType"] = "generated"
+#   v.vmx["ethernet2.vnet"] = "vmnet3"
+#   v.vmx["memsize"] = "8096"
+#   v.vmx["numvcpus"] = "4"
+#   v.vmx["mks.enable3d"] = "TRUE"
+# end
+
+#  config.vm.provider "vmware_workstation" do |v|
+#    v.vmx["ethernet0.virtualDev"] = "e1000"
+#    v.vmx["ethernet0.connectionType"] = "NAT"
+#    v.vmx["ethernet1.present"] = "TRUE"
+#    v.vmx["ethernet2.present"] = "TRUE"
+#    v.vmx["ethernet1.virtualDev"] = "e1000"
+#    v.vmx["ethernet1.connectionType"] = "custom"
+#    v.vmx["ethernet1.vnet"] = "vmnet2"
+#    v.vmx["ethernet1.addressType"] = "generated"
+#    v.vmx["ethernet2.virtualDev"] = "e1000"
+#    v.vmx["ethernet2.connectionType"] = "custom"
+#    v.vmx["ethernet2.addressType"] = "generated"
+#    v.vmx["ethernet2.vnet"] = "vmnet3"
+#    v.vmx["memsize"] = "16096"
+#    v.vmx["numvcpus"] = "8"
+#  end
+
+
+
+#  Boot with graphics enabled..you can easily change true to false and live without
+config.vm.provider "vmware_fusion" do |vf|
+ vf.gui = true
+end
+
+config.vm.provider "vmware_workstation" do |vw|
+ vw.gui = true
+end
+
+
+##Provision
+
+#change the below names to your keys
+
+config.vm.provision :salt do |salt|
+  salt.run_highstate = false
+  salt.minion_key  = "./ejk.pem"
+  salt.minion_pub  = "./ejk.pub"
+end
+
+
+config.vm.provision :shell, :inline => <<END
+
+cp -f /vagrant/settings.ini /home/virl/settings.ini
+
+# Bring ubuntu up to date
+apt-get -y update
+apt-get -y upgrade
+
+# Setting openstack env for later
+. /home/virl/devstack/openrc admin admin
+
+#This builds local salt tree
+sudo -u virl /usr/local/bin/virl-install -s
+
+
+#This is where the magic happens  (updated ank,std,vmmaestro)
+
+# Your salt-master if external should be set to cons-ejk-ucs.cisco.com
+# This calls highstate to do the rest.
+salt-call state.highstate -l quiet
+
+
+# This installs users and builds networks
+sudo -u virl virl-install -v
+#
+
+
+# If we end up stripping desktop in the future and want it back
+# or addtional binaries you want to install here
+#apt-get install --no-install-recommends ubuntu-desktop -y
+#apt-get install vlc -y
+#
+
+END
+
+end
