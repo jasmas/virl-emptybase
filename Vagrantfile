@@ -21,15 +21,16 @@ Vagrant.configure("2") do |config|
 # The url from where the 'config.vm.box' box will be fetched if it
 # doesn't already exist on the user's system.
 # May work
+#  config.vm.box_url = "http://virl-ucs-06.cisco.com/download/virl_emptybase.box"
 # Will work if you pull it locally
-  config.vm.box_url = ""
+#  config.vm.box_url = "./virl_emptybase.box"
 
   # Create a forwarded port mapping which allows access to a specific port
   # within the machine from a port on the host machine. In the example below,
   # accessing "localhost:8080" will access port 80 on the guest machine.
 
 # The below defaults exist so you can have the vmm native client on your machine and
-#  simply have it always pointed to localhost 
+#  simply have it always pointed to localhost
 
 config.vm.network "forwarded_port", guest: 19399, host: 19399
 config.vm.network "forwarded_port", guest: 19400, host: 19400
@@ -39,12 +40,6 @@ config.vm.network "forwarded_port", guest: 19401, host: 19401
   # using a specific IP.
   # config.vm.network "private_network", ip: "192.168.33.10"
 
-## Uncomment the below for fusion
-
-config.vm.network "private_network", ip: "172.16.1.0", auto_config: false
-config.vm.network "private_network", ip: "172.16.2.0", auto_config: false
-config.vm.network "private_network", ip: "172.16.3.0", auto_config: false
-config.vm.network "private_network", ip: "172.16.10.0", auto_config: false
 
   # If true, then any SSH connections made will enable agent forwarding.
   # These are both baked into the box so just leave them set
@@ -56,15 +51,17 @@ config.ssh.username = 'virl'
 # /vagrant of the ubuntu node so I dont call it out here.
 
 # I STRONGLY suggest you make your own version of images mount so you only need to
-# download them once
-#config.vm.synced_folder "/local/copy/images", "/home/virl/images"
+# download them once replace /Users/ejk/packer with something specific to you
+config.vm.synced_folder "/Users/ejk/packer/images", "/home/virl/images"
 
-# So you only have to download the vmm binaries once
-#config.vm.synced_folder "/local/www/download", "/var/www/download"
+# So you only have to download the vmm binaries once replace /Users/ejk/packer with something
+# specific to you
+config.vm.synced_folder "/Users/ejk/packer/download", "/var/www/download"
 
-# If you run the vmmaestro linux desktop you can keep your own copy of your 
-# vmm "workspace" locally 
-#config.vm.synced_folder "/local/copy/vmmaestro/configs", "/home/virl/vmmaestro"
+
+# If you run the vmmaestro linux desktop you can keep your own copy of your
+# vmm "workspace" locally
+#config.vm.synced_folder "/Volumes/Home/Users/ejk/vmmaestro", "/home/virl/vmmaestro"
 
 
 ## The two provider sections below are included automatically in the box...only uncomment
@@ -133,7 +130,11 @@ config.vm.provider "vmware_desktop" do |vd, override|
   vd.vmx["unity.wasCapable"] = "FALSE"
 end
 
-
+# These below are to my knowledge only needed with fusion
+config.vm.network "private_network", ip: "172.16.1.0", auto_config: false
+config.vm.network "private_network", ip: "172.16.2.0", auto_config: false
+config.vm.network "private_network", ip: "172.16.3.0", auto_config: false
+config.vm.network "private_network", ip: "172.16.10.0", auto_config: false
 
 #  Boot with graphics enabled..you can easily change true to false and live without
 config.vm.provider "vmware_fusion" do |vf|
@@ -148,44 +149,36 @@ end
 ##Provision
 
 #change the below names to your keys
-# You do not need this if pointed at open virl server
+# If you only received a pem file you can generate pub flavor with
+# openssl rsa -in ./salt/AAA12345.virl.info.pem  -pubout > ./salt/AAA12345.virl.info.pub
 
 config.vm.provision :salt do |salt|
   salt.run_highstate = false
-  salt.minion_key  = "./example.virl.info.pem"
-  salt.minion_pub  = "./example.virl.info.pub"
-  salt.minion_config  = "./minion"
+  salt.minion_key  = "./salt/ejk.virl.info.pem"
+  salt.minion_pub  = "./salt/ejk.virl.info.pub"
+#  You probably wont have reason to have your own custom minion file but if you do
+#  salt.minion_config  = "./salt/minion"
 end
 
 config.vm.provision :shell, :inline => <<END
-#rm /etc/salt/pki/minion/minion_master.pub 2> /dev/null
+
+#echo is here just so shell wont error with all other lines commented out.
+echo 'Just here to prop up shell provision'
+
+# Copies virl.ini file from this directory into position
 cp -f /vagrant/virl.ini /etc/virl.ini
 
-
-# Bring ubuntu up to date
-#apt-get -y update -qq
-#apt-get -y upgrade
-
-#This builds local salt tree
+#This builds local salt tree with your info
 /usr/local/bin/vinstall salt
 
-#This is where the magic happens  (updated ank,std,vmmaestro)
-/usr/local/bin/vinstall fourth
+# Final vm provisioning
+sudo salt-call state.sls virl.high
 
-
-# Your salt-master if external should be set to salt-master.cisco.com 
-# or eu-salt-master.cisco.com
-
-
-# If we end up stripping desktop in the future and want it back
-# or addtional binaries you want to install here
+# If you would like lubuntu desktop
 #salt-call state.sls desktop -l quiet
-#salt-call state.sls vmm-download -l quiet
-#salt-call state.sls vmm-local -l quiet
 
-# This will pull all the images but will could take quite a long time
-# to run depending on what its downloaded
-salt-call state.sls routervms 
+#Any additional binaries can be added here
+#apt-get install vlc -y
 #
 
 END

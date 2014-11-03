@@ -1,0 +1,4 @@
+This directory is for your preseed keys.
+If you only received a .pem file you can generate pub with the command:
+openssl rsa -in ./salt/AAA12345.virl.info.pem  -pubout > ./salt/AAA12345.virl.info.pub
+
